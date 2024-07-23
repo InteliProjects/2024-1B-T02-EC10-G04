@@ -1,0 +1,8 @@
+{
+  "label": "Plano de Comunicação",
+  "position": 12,
+  "link": {
+    "type": "generated-index",
+    "description": "Nesta seção, apresentaremos a evolução das interfaces do aplicativo desenvolvidas em Flutter."
+  }
+}

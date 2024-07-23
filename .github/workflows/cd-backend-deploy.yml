@@ -1,0 +1,304 @@
+name: "CD - Application"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+        - 'backend/**'
+        - 'database/**'
+        - 'dashboard/**'
+        - 'deploy/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  BUCKET_TERRAFORM_STATE: ${{ secrets.BUCKET_TERRAFORM_STATE }}
+
+jobs:
+  changes:
+    name: "Migration Filter"
+    runs-on: ubuntu-latest
+    outputs:
+      database: ${{ steps.filter.outputs.database }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Paths filter
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          base: ${{ github.ref }}
+          filters: |
+            database:
+              - 'database/**'
+
+  terraform:
+    name: "Terraform"
+    needs: changes
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform State files from S3
+        working-directory: deploy/iac/
+        run: |
+          aws s3 cp s3://${{env.BUCKET_TERRAFORM_STATE}}/state-files/terraform.tfstate terraform.tfstate
+          aws s3 cp s3://${{env.BUCKET_TERRAFORM_STATE}}/state-files/terraform.tfstate.backup terraform.tfstate.backup
+        continue-on-error: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: deploy/iac/
+        run: terraform init
+
+      - name: Terraform Format
+        working-directory: deploy/iac/
+        run: terraform fmt
+
+      - name: Terraform Validate
+        working-directory: deploy/iac/
+        run: terraform validate
+
+      - name: Check for Changes in 'infrastructure' folder
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^deploy/iac/'; then
+            echo "Alterações encontradas na pasta 'infrastructure'. Executando Terraform Plan."
+          else
+            echo "Nenhuma alteração na pasta 'infrastructure'. Ignorando o Terraform Plan."
+            exit 0  # Encerra o fluxo de trabalho sem erro
+          fi
+
+      - name: Terraform Plan e Terraform Apply
+        working-directory: deploy/iac/
+        run: terraform plan -input=false -out=tfplan && terraform apply -auto-approve -input=false tfplan
+        continue-on-error: true
+
+      - name: Upload Terraform State files to S3
+        working-directory: deploy/iac/
+        run: |
+          aws s3 cp terraform.tfstate s3://${{env.BUCKET_TERRAFORM_STATE}}/state-files/terraform.tfstate
+          aws s3 cp terraform.tfstate.backup s3://${{env.BUCKET_TERRAFORM_STATE}}/state-files/terraform.tfstate.backup
+
+  migration:
+    name: "Database Migration"
+    needs: [changes, terraform]
+
+    if: ${{ needs.changes.outputs.database == 'true' }}
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get RDS endpoint
+        id: rds_endpoint
+        run: |
+          DB_INSTANCE_IDENTIFIER=prod-db
+          DB_ENDPOINT=$(aws rds describe-db-instances --db-instance-identifier $DB_INSTANCE_IDENTIFIER --query "DBInstances[0].Endpoint.Address" --output text)
+          echo "::set-output name=endpoint::$DB_ENDPOINT"
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Execute SQL script - Migration
+        working-directory: ./database/
+        env:
+          DB_ENDPOINT: ${{ steps.rds_endpoint.outputs.endpoint }}
+          DB_NAME: prod
+          MASTER_USERNAME: postgres
+          MASTER_USER_PASSWORD: postgres123
+        run: |
+          psql postgresql://$MASTER_USERNAME:$MASTER_USER_PASSWORD@$DB_ENDPOINT:5432/$DB_NAME -f 1-tables.sql
+
+      - name: Execute SQL script - Data
+        working-directory: ./database/
+        env:
+          DB_ENDPOINT: ${{ steps.rds_endpoint.outputs.endpoint }}
+          DB_NAME: prod
+          MASTER_USERNAME: postgres
+          MASTER_USER_PASSWORD: postgres123
+        run: |
+          psql postgresql://$MASTER_USERNAME:$MASTER_USER_PASSWORD@$DB_ENDPOINT:5432/$DB_NAME -f 2-data.sql
+
+  build:
+    name: "Build and Deploy to ECR"
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Setup .ENV
+        working-directory: ./backend/
+        run: |
+          echo "POSTGRES_URL=${{ secrets.POSTGRES_URL }}" >> ./.env
+          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> ./.env
+          echo "CONFLUENT_KAFKA_TOPIC_NAME=${{ secrets.CONFLUENT_KAFKA_TOPIC_NAME }}" >> ./.env
+          echo "CONFLUENT_API_KEY=${{ secrets.CONFLUENT_API_KEY }}" >> ./.env
+          echo "CONFLUENT_API_SECRET=${{ secrets.CONFLUENT_API_SECRET }}" >> ./.env
+          echo "CONFLUENT_BOOTSTRAP_SERVER_SASL=${{ secrets.CONFLUENT_BOOTSTRAP_SERVER_SASL }}" >> ./.env
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> ./.env
+          echo "REDIS_ADDRESS=${{ secrets.REDIS_ADDRESS }}" >> ./.env
+          echo "SWAGGER_HOST=${{ secrets.SWAGGER_HOST }}" >> ./.env
+
+      - name: Build Conductor Monolith
+        working-directory: ./backend/
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: conductor
+          IMAGE_TAG: latest
+        run: |
+          docker buildx build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --push -f ./build/Dockerfile.conductor .
+
+      - name: Build Backend Monolith
+        working-directory: ./backend/
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: server
+          IMAGE_TAG: latest
+        run: |
+          docker buildx build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --push -f ./build/Dockerfile.server .
+
+      - name: Build Dashboard
+        working-directory: ./dashboard/
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: dashboard
+          IMAGE_TAG: latest
+        run: |
+          docker buildx build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --push -f ./Dockerfile .
+
+  kubernetes:
+    name: "Deploy to EKS"
+    needs: [terraform, build]
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Check if EKS cluster exists
+        id: check-cluster
+        run: |
+          aws eks describe-cluster --name eks-prod --region ${{ env.AWS_REGION }} || echo "Cluster does not exist"
+
+      - name: Update kubeconfig
+        run: aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name eks-prod
+
+      - name: Ensure server namespace exists
+        run: |
+          kubectl get namespace server || kubectl create namespace server
+
+      - name: Deploy to EKS - Server
+        working-directory: deploy/charts-aws/
+        run: |
+          helm upgrade --install server server/ \
+           --namespace server \
+           --values server/values.yaml \
+           --set image.tag=latest
+
+      - name: Restart server deployment
+        run: |
+          kubectl rollout restart deployment server --namespace server
+
+      - name: Ensure conductor namespace exists
+        run: |
+          kubectl get namespace conductor || kubectl create namespace conductor
+
+      - name: Deploy to EKS - Conductor
+        working-directory: deploy/charts-aws/
+        run: |
+          helm upgrade --install conductor conductor/ \
+          --namespace conductor \
+          --values conductor/values.yaml \
+          --set image.tag=latest
+
+      - name: Restart conductor deployment
+        run: |
+          kubectl rollout restart deployment conductor --namespace conductor
+
+      - name: Ensure dashboard namespace exists
+        run: |
+          kubectl get namespace dashboard || kubectl create namespace dashboard
+
+      - name: Deploy to EKS - Dashboard
+        working-directory: deploy/charts-aws/
+        run: |
+          helm upgrade --install dashboard dashboard/ \
+          --namespace dashboard \
+          --values dashboard/values.yaml \
+          --set image.tag=latest
+
+      - name: Restart dashboard deployment
+        run: |
+          kubectl rollout restart deployment dashboard --namespace dashboard

@@ -1,0 +1,109 @@
+version: "3.9"
+
+volumes:
+  postgres_data:
+  redis_data:
+  grafana_data:
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    platform: linux/amd64
+    hostname: zookeeper
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    platform: linux/amd64
+    hostname: kafka
+    container_name: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://:9092,OUTSIDE://:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,OUTSIDE://host.docker.internal:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "kafka-topics --list --bootstrap-server localhost:9092"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 9094:9094
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:7.3.0
+    platform: linux/amd64
+    hostname: control-center
+    container_name: control-center
+    restart: always
+    depends_on:
+      - kafka
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: "kafka:9092"
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      PORT: 9021
+  postgres:
+    image: postgres:latest
+    restart: always
+    hostname: postgres
+    container_name: postgres
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:latest
+    hostname: redis
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=myredispassword
+    command: ["sh", "-c", "redis-server --requirepass $$REDIS_PASSWORD"]
+    volumes:
+      - redis_data:/data
+
+  prometheus:
+    container_name: prometheus-service
+    image: prom/prometheus
+    restart: always
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./backend/configs/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana-oss:latest
+    user: "0"
+    environment:
+      GF_PATHS_CONFIG: /etc/grafana/grafana_settings.ini
+    ports:
+      - "3000:3000"
+    restart: always
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./backend/configs/grafana_settings.ini:/etc/grafana/grafana_settings.ini

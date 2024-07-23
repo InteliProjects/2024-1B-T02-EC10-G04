@@ -1,0 +1,8 @@
+{
+  "label": "Deploy em Produção",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Nesta seção, apresentaremos o processo e as etapas envolvidas na realização do deploy em produção na AWS."
+  }
+}

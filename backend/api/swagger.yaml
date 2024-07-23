@@ -1,0 +1,1010 @@
+basePath: /api/v1
+definitions:
+  dto.CreateMedicineInputDTO:
+    properties:
+      batch:
+        type: string
+      name:
+        type: string
+      stripe:
+        $ref: '#/definitions/entity.StripeType'
+    type: object
+  dto.CreateMedicineOutputDTO:
+    properties:
+      batch:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stripe:
+        $ref: '#/definitions/entity.StripeType'
+      updated_at:
+        type: string
+    type: object
+  dto.CreateOrdersInputDTO:
+    properties:
+      medicine_ids:
+        items:
+          type: string
+        type: array
+      observation:
+        type: string
+      priority:
+        type: string
+      pyxis_id:
+        type: string
+      responsible_id:
+        type: string
+      user_id:
+        type: string
+    required:
+    - medicine_ids
+    - priority
+    - pyxis_id
+    type: object
+  dto.CreatePyxisInputDTO:
+    properties:
+      label:
+        type: string
+    type: object
+  dto.CreatePyxisOutputDTO:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+    type: object
+  dto.CreateUserInputDTO:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      profession:
+        type: string
+      role:
+        type: string
+    type: object
+  dto.CreateUserOutputDTO:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      on_duty:
+        type: boolean
+      role:
+        type: string
+    type: object
+  dto.DisassociateMedicineInputDTO:
+    properties:
+      medicines:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.FindMedicineOutputDTO:
+    properties:
+      batch:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stripe:
+        $ref: '#/definitions/entity.StripeType'
+      updated_at:
+        type: string
+    type: object
+  dto.FindOrderOutputDTO:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      medicine:
+        items:
+          $ref: '#/definitions/entity.Medicine'
+        type: array
+      medicine_id:
+        type: string
+      observation:
+        type: string
+      order_id:
+        type: string
+      priority:
+        type: string
+      pyxis_id:
+        type: string
+      responsible:
+        $ref: '#/definitions/entity.User'
+      responsible_id:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/entity.User'
+      user_id:
+        type: string
+    type: object
+  dto.FindPyxisOutputDTO:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.FindUserOutputDTO:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      on_duty:
+        type: boolean
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.GenerateQRCodeOutputDTO:
+    properties:
+      pyxis_id:
+        type: string
+    type: object
+  dto.LoginUserInputDTO:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.LoginUserOutputDTO:
+    properties:
+      access_token:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      on_duty:
+        type: boolean
+      profession:
+        type: string
+      role:
+        type: string
+    type: object
+  dto.RegisterMedicinePyxisInputDTO:
+    properties:
+      medicines:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.UpdateMedicineInputDTO:
+    properties:
+      batch:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stripe:
+        $ref: '#/definitions/entity.StripeType'
+      updated_at:
+        type: string
+    type: object
+  dto.UpdateOrderInputDTO:
+    properties:
+      observation:
+        type: string
+      order_id:
+        type: string
+      priority:
+        type: string
+      responsible_id:
+        type: string
+      status:
+        type: string
+    type: object
+  dto.UpdateOrderOutputDTO:
+    properties:
+      created_at:
+        type: string
+      medicines:
+        items:
+          $ref: '#/definitions/entity.Medicine'
+        type: array
+      observation:
+        type: string
+      order_id:
+        type: string
+      priority:
+        type: string
+      responsible:
+        $ref: '#/definitions/entity.User'
+      status:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        $ref: '#/definitions/entity.User'
+    type: object
+  dto.UpdatePyxisInputDTO:
+    properties:
+      id:
+        type: string
+      label:
+        type: string
+    type: object
+  dto.UpdatePyxisOutputDTO:
+    properties:
+      id:
+        type: string
+      label:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.UpdateUserInputDTO:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      on_duty:
+        type: boolean
+      password:
+        type: string
+      role:
+        type: string
+    type: object
+  dto.UpdateUserOutputDTO:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      on_duty:
+        type: boolean
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  entity.Medicine:
+    properties:
+      batch:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stripe:
+        $ref: '#/definitions/entity.StripeType'
+      updated_at:
+        type: string
+    type: object
+  entity.StripeType:
+    enum:
+    - red
+    - yellow
+    - black
+    type: string
+    x-enum-varnames:
+    - StripeRed
+    - StripeYellow
+    - StripeBlack
+  entity.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      on_duty:
+        type: boolean
+      password:
+        type: string
+      profession:
+        type: string
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: gomedicine@inteli.edu.br
+    name: Manager API Support
+    url: https://github.com/Inteli-College/2024-1B-T02-EC10-G04
+  description: This is a.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Manager API
+  version: "1.0"
+paths:
+  /medicines:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all Medicines entities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindMedicineOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Retrieve all Medicines entities
+      tags:
+      - Medicines
+    post:
+      consumes:
+      - application/json
+      description: Create a new Medicine entity
+      parameters:
+      - description: Medicine entity to create
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMedicineInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CreateMedicineOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Create a new Medicine entity
+      tags:
+      - Medicines
+  /medicines/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a Medicine entity
+      parameters:
+      - description: Medicine ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a Medicine entity
+      tags:
+      - Medicines
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a Medicine entity by ID
+      parameters:
+      - description: Medicine ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FindMedicineOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Retrieve a Medicine entity by ID
+      tags:
+      - Medicines
+    put:
+      consumes:
+      - application/json
+      description: Update a Medicine entity
+      parameters:
+      - description: Medicine ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Medicine entity to update
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMedicineInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FindMedicineOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Update a Medicine entity
+      tags:
+      - Medicines
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all Order entities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindOrderOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Retrieve all Order entities
+      tags:
+      - Orders
+    post:
+      consumes:
+      - application/json
+      description: Create a new Order entity and produce an event to Kafka
+      parameters:
+      - description: Order entity to create
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateOrdersInputDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create a new Order entity
+      tags:
+      - Orders
+  /orders/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an Order entity
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete an Order entity
+      tags:
+      - Orders
+    get:
+      consumes:
+      - application/json
+      description: Retrieve an Order entity by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FindOrderOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Retrieve an Order entity by ID
+      tags:
+      - Orders
+    put:
+      consumes:
+      - application/json
+      description: Update an Order entity
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Order entity to update
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateOrderInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UpdateOrderOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Update an Order entity
+      tags:
+      - Orders
+  /orders/collector:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all Order entities by Collector ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindOrderOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Retrieve all Order entities by Collector ID
+      tags:
+      - Orders
+  /orders/user:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all Order entities by User ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindOrderOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Retrieve all Order entities by User ID
+      tags:
+      - Orders
+  /pyxis:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all Pyxis entities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindPyxisOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Retrieve all Pyxis entities
+      tags:
+      - Pyxis
+    post:
+      consumes:
+      - application/json
+      description: Create a new Pyxis entity
+      parameters:
+      - description: Pyxis entity to create
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePyxisInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CreatePyxisOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Create a new Pyxis entity
+      tags:
+      - Pyxis
+  /pyxis/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a Pyxis entity
+      parameters:
+      - description: Pyxis ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a Pyxis entity
+      tags:
+      - Pyxis
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a Pyxis entity by ID
+      parameters:
+      - description: Pyxis ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FindPyxisOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Retrieve a Pyxis entity by ID
+      tags:
+      - Pyxis
+    put:
+      consumes:
+      - application/json
+      description: Update a Pyxis entity
+      parameters:
+      - description: Pyxis ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Pyxis entity to update
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePyxisInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UpdatePyxisOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Update a Pyxis entity
+      tags:
+      - Pyxis
+  /pyxis/{id}/medicines:
+    delete:
+      consumes:
+      - application/json
+      description: Disassociate a sequence n of medicines from a Pyxis
+      parameters:
+      - description: Pyxis ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Medicines to disassociate
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DisassociateMedicineInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Disassociate medicines from a Pyxis
+      tags:
+      - Pyxis
+    get:
+      consumes:
+      - application/json
+      description: Get all medicines related to a Pyxis
+      parameters:
+      - description: Pyxis ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindMedicineOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Get medicines from a Pyxis
+      tags:
+      - Pyxis
+  /pyxis/{id}/register-medicine:
+    post:
+      consumes:
+      - application/json
+      description: Register a existing medicine to a existing Pyxis entity
+      parameters:
+      - description: Pyxis ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Medicines to register into Pyxis
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterMedicinePyxisInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message": message}'
+          schema:
+            type: objetct
+      security:
+      - BearerAuth: []
+      summary: Register a to a Pyxis entity
+      tags:
+      - Pyxis
+  /pyxis/qrcode:
+    post:
+      consumes:
+      - application/json
+      description: Create a QR code for a given pyxis ID
+      parameters:
+      - description: Pyxis ID to generate QR code for
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GenerateQRCodeOutputDTO'
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: QR code image
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Generate a QR code for a Pyxis
+      tags:
+      - Pyxis
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all User entities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FindUserOutputDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Retrieve all User entities
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Create a new User entity
+      parameters:
+      - description: User entity to create
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserInputDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateUserOutputDTO'
+      summary: Create a new User entity
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a User entity
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a User entity
+      tags:
+      - Users
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a User entity by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FindUserOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Retrieve a User entity by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update a User entity
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User entity to update
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UpdateUserOutputDTO'
+      security:
+      - BearerAuth: []
+      summary: Update a User entity
+      tags:
+      - Users
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user credentials and return user session information
+      parameters:
+      - description: Login credentials
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginUserInputDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication successful, user details returned
+          schema:
+            $ref: '#/definitions/dto.LoginUserOutputDTO'
+        "400":
+          description: Invalid credentials or bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log in a user
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    description: '"Type: Bearer token"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

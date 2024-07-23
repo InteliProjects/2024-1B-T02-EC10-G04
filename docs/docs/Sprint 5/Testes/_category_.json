@@ -1,0 +1,8 @@
+{
+  "label": "Testes",
+  "position": 10,
+  "link": {
+    "type": "generated-index",
+    "description": "Esta seção contém os testes realizados no projeto."
+  }
+}

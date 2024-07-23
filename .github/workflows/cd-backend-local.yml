@@ -1,0 +1,192 @@
+name: CI/CD - Local Application
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+        - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    name: "Build and Deploy Images"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install make
+        run: sudo apt-get update && sudo apt-get install -y make
+
+      - name: Set up Backend .env file
+        working-directory: backend/
+        run: make env
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        id: buildx
+        with:
+          install: true
+
+      - name: Build Docker images
+        working-directory: backend/
+        run: make infra
+
+      - name: Show Docker Images after build
+        run: docker images
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+
+      - name: Verify Docker login
+        run: docker info
+
+      - name: ZOOKEEPER - Tag and Push Docker image
+        working-directory: backend/
+        run: |
+          IMAGE_ID=$(docker images -q confluentinc/cp-zookeeper)
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-zookeeper:${{ github.sha }}
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-zookeeper:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-zookeeper:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-zookeeper:latest
+
+      - name: KAFKA - Tag and Push Docker image
+        working-directory: backend/
+        run: |
+          IMAGE_ID=$(docker images -q confluentinc/cp-kafka)
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-kafka:${{ github.sha }}
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-kafka:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-kafka:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-kafka:latest
+
+      - name: REDIS - Tag and Push Docker image
+        working-directory: backend/
+        run: |
+          IMAGE_ID=$(docker images -q redis)
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/redis:${{ github.sha }}
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/redis:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/redis:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/redis:latest
+
+      - name: POSTGRES - Tag and Push Docker image
+        working-directory: backend/
+        run: |
+          IMAGE_ID=$(docker images -q postgres)
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/postgres:${{ github.sha }}
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/postgres:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/postgres:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/postgres:latest
+
+      - name: CONTROL CENTER - Tag and Push Docker image
+        working-directory: backend/
+        run: |
+          IMAGE_ID=$(docker images -q confluentinc/cp-enterprise-control-center)
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-enterprise-control-center:${{ github.sha }}
+          docker tag $IMAGE_ID ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-enterprise-control-center:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-enterprise-control-center:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/confluentinc-cp-enterprise-control-center:latest
+
+  minikube:
+    name: "Minikube - Test Deployment"
+    needs: build-deploy
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v1
+
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+      - name: Set up Kubernetes tools
+        uses: azure/setup-kubectl@v1
+        with:
+          version: v1.21.0
+
+      - name: Set up Minikube
+        uses: manusa/actions-setup-minikube@v2.4.0
+        with:
+          minikube version: "v1.16.0"
+          kubernetes version: "v1.19.2"
+
+      - name: Delete any existing Minikube cluster
+        run: minikube delete || true
+
+      - name: Start Minikube
+        run: minikube start --driver=docker
+
+      - name: Create Kubernetes Postgres deployment
+        working-directory: deploy/charts-local/postgres
+        run: |
+          kubectl apply -f postgres-deployment.yaml
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl rollout status deployment/postgres-deployment
+          kubectl get pods
+
+      - name: Create Kubernetes Redis deployment
+        working-directory: deploy/charts-local/redis
+        run: |
+          kubectl apply -f redis-deployment.yaml
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl rollout status deployment/redis-deployment
+          kubectl get pods
+
+      - name: Create Kubernetes Kafka deployment
+        working-directory: deploy/charts-local/kafka
+        run: |
+          kubectl apply -f zookeeper-deployment.yaml
+          kubectl apply -f kafka-deployment.yaml
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl rollout status deployment/zookeeper-deployment
+          kubectl rollout status deployment/kafka-deployment
+          kubectl get pods
+
+      - name: Create Kubernetes Control Center deployment
+        working-directory: deploy/charts-local/backend
+        run: |
+          kubectl apply -f backend-deployment.yaml
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl rollout status deployment/backend-deployment
+          kubectl get pods
+
+      - name: Check all resources
+        run: |
+          kubectl get all
+
+      # - name: Run Health Check
+      #   run: |
+      #     curl -X GET http://localhost:9021/conductor/healthz
+
+      - name: Delete all resources
+        run: |
+          kubectl delete -f deploy/charts-local/backend/backend-deployment.yaml
+          kubectl delete -f deploy/charts-local/kafka/kafka-deployment.yaml
+          kubectl delete -f deploy/charts-local/kafka/zookeeper-deployment.yaml
+          kubectl delete -f deploy/charts-local/redis/redis-deployment.yaml
+          kubectl delete -f deploy/charts-local/postgres/postgres-deployment.yaml
+
+      - name: Stop Minikube
+        run: minikube stop
+
+      - name: Delete Minikube
+        run: minikube delete

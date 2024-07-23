@@ -1,0 +1,1 @@
+ALTER TABLE Orders ADD pyxis_id UUID NOT NULL;

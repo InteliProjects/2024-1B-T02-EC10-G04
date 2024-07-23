@@ -1,0 +1,7 @@
+{
+  "label": "Deploy",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Nesta seção, estaremos apresentando sobre o processo de deploy do backend e serviços acomplados com o Kubernetes."  }
+}

@@ -1,0 +1,8 @@
+{
+  "label": "Arquitetura da solução",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "Nesta seção, é abordado o processo de arquitetura da solução, desde a modelagem do banco de dados até o planejamento da infraestrutura da aplicação."
+  }
+}

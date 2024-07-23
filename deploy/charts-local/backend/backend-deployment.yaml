@@ -1,0 +1,36 @@
+# Default values for bacend.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: 
+            repository: gustavofdeoliveira/confluentinc-cp-enterprise-control-center:latest
+            pullPolicy: Always
+            tag: latest
+          ports:
+            - containerPort: 9021
+          env:
+            - name: CONTROL_CENTER_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+            - name: CONTROL_CENTER_REPLICATION_FACTOR
+              value: "1"
+            - name: "PORT"
+              value : "9021"
+           
